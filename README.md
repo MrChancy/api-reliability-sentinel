@@ -14,7 +14,7 @@
 * **Probe 事件归集**：对目标接口发起探测并写入 `probe_event`
 * **Alert 聚合去重**：按窗口聚合生成/合并 `alert_event`（ERROR_RATE）
 * **通知通道（Email）**：OPEN / REOPEN 触发邮件，写入 `notify_log`（本地默认 MailHog）
-* **可追溯性**：关键链路落库，可通过 DB 或 API 复盘（可选接入 TraceId）
+* **可追溯性**：关键链路落库，可通过 DB 或 API 复盘（接入 TraceId）
 
 ---
 
@@ -77,11 +77,10 @@ docker compose ps
 
 ---
 
-## 快速验证（3～5 条 curl 复现命令）
+## 快速验证
 
-下面提供一套“从 0 到触发告警 + 收到邮件”的最小复现脚本。
 
-### 约定环境变量（可选，但推荐）
+### 约定环境变量
 
 ```bash
 export SENTINEL_BASE="http://localhost:8080"
@@ -95,10 +94,7 @@ curl -sS "$DEMO_BASE/demo/ok" | jq
 
 ### Step 2：创建一个探测目标（2/5）
 
-下面示例创建一个会持续失败的目标（指向 `/demo/flaky`），用于快速触发 ERROR_RATE 告警。
-
-
-**docker 内部互通**
+下面示例创建一个有概率失败的目标（指向 `/demo/flaky`），用于快速触发 ERROR_RATE 告警。
 
 ```bash
 curl -sS -X 'POST' \
@@ -130,13 +126,7 @@ curl -sS -X 'POST' \
 curl -sS "$SENTINEL_BASE/api/targets" | jq
 ```
 
-从返回 JSON 里记下 `id`（例如 `1`）。
-
 ### Step 4：触发探测并生成事件（4/5）
-
-* `intervalSec=2`，10 秒内能产生约 5 条 `probe_event`
-* `windowSec=10`，AlertJob 扫窗口后会触发 ERROR_RATE
-
 
 ```bash
 curl -sS -X 'POST' \
@@ -157,7 +147,7 @@ curl -sS -X 'POST' \
 
 * `http://localhost:8025`
 
-你应当能看到一封 ERROR_RATE 告警邮件（OPEN 或 REOPEN）。
+应当能看到一封 ERROR_RATE 告警邮件（OPEN 或 REOPEN）。
 
 **MailHog 收件箱**
 ![mailhog-inbox](docs/images/mailhog-inbox.png)
@@ -224,7 +214,7 @@ LIMIT 10;
 * M1：Target + Probe 落库 + ERROR_RATE 告警 + Email（MailHog）闭环
 * M2：频控重发（last_sent_ts）、ACK/REOPEN 完整状态机、责任人路由、并发探测
 * M3：基础看板（MTTD/MTTR/错误率趋势）+ 压测数据对比
-* M4：接入 OTel/Prometheus（可选）
+* M4：接入 OTel/Prometheus
 
 ---
 
