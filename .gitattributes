@@ -1,0 +1,20 @@
+# 1. 自动处理文本文件的换行符（推荐做法）
+* text=auto
+
+# 2. 明确 Java 源码、XML、配置文件的处理方式
+*.java text diff=java
+*.xml text
+*.yml text
+*.yaml text
+*.properties text
+
+# 3. 极其重要：确保 Docker 相关的 shell 脚本在任何系统下都保持 LF
+*.sh text eol=lf
+
+# 4. 声明二进制文件，防止被 Git 误当成文本修改导致损坏
+*.jar binary
+*.war binary
+*.zip binary
+*.jpg binary
+*.png binary
+*.ico binary

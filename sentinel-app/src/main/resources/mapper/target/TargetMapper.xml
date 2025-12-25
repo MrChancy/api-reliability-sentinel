@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.fluffycat.sentinelapp.target.repo.TargetMapper">
+
+    <select id="selectByFilter" resultType="com.fluffycat.sentinelapp.domain.entity.target.TargetEntity">
+        SELECT
+        id, name, enabled, method, base_url, path,
+        env, tags, owner,
+        interval_sec, timeout_ms, retries, window_sec, error_rate_threshold,
+        silenced_until, silence_reason,
+        created_at, updated_at
+        FROM probe_target
+        <where>
+            <if test="enabled != null">
+                AND enabled = #{enabled}
+            </if>
+            <if test="owner != null and owner != ''">
+                AND owner = #{owner}
+            </if>
+            <if test="env != null and env != ''">
+                AND env = #{env}
+            </if>
+            <if test="tag != null and tag != ''">
+                AND FIND_IN_SET(#{tag}, tags)
+            </if>
+        </where>
+        ORDER BY id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+</mapper>

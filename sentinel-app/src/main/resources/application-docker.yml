@@ -1,0 +1,20 @@
+spring:
+  mail:
+    host: mailhog
+    port: 1025
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+      mail.smtp.ssl.enable: false
+  datasource:
+    url: jdbc:mysql://${DB_HOST:mysql}:${DB_PORT:3306}/${DB_NAME:api_sentinel}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+sentinel:
+  target:
+    defaultEnv: docker

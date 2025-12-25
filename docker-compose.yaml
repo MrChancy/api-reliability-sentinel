@@ -1,0 +1,94 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: api-sentinel-mysql
+    command: [
+      "--default-authentication-plugin=mysql_native_password",
+      "--character-set-server=utf8mb4",
+      "--collation-server=utf8mb4_0900_ai_ci"
+    ]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Shanghai
+    ports:
+      - "3307:3306"
+    volumes:
+      # 数据持久化：重启不丢
+      - mysql_data:/var/lib/mysql
+      # 首次启动自动执行：建库建表
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - sentinel_net
+
+  demo-api:
+    build:
+      context: .
+      dockerfile: demo-api/Dockerfile
+    container_name: api-sentinel-demo-api
+    environment:
+      TZ: Asia/Shanghai
+      SERVER_PORT: 8081
+    ports:
+      - "8081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - sentinel_net
+
+  sentinel-app:
+    build:
+      context: .
+      dockerfile: sentinel-app/Dockerfile
+    container_name: api-sentinel-app
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      TZ: Asia/Shanghai
+      SERVER_PORT: 8080
+
+      # DB
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      MAIL_FROM: ${MAIL_FROM}
+      MAIL_TO: ${MAIL_TO}
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      demo-api:
+        condition: service_started
+    networks:
+      - sentinel_net
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "8025:8025"   # Web UI
+      - "1025:1025"   # SMTP
+    networks:
+      - sentinel_net
+
+networks:
+  sentinel_net:
+
+volumes:
+  mysql_data:

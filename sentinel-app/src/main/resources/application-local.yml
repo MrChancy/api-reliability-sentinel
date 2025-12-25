@@ -1,0 +1,28 @@
+spring:
+  mail:
+    host: localhost
+    port: 1025
+    username:
+    password:
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+      mail.smtp.ssl.enable: false
+  datasource:
+    url: jdbc:mysql://127.0.0.1:${DB_PORT:3307}/${DB_NAME:api_sentinel}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+sentinel:
+  target:
+    defaultEnv: local
+
+
+#logging:
+#  level:
+#    com.zaxxer.hikari: DEBUG
+#    org.springframework.jdbc: DEBUG
