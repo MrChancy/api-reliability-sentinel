@@ -20,6 +20,13 @@ springdoc:
 sentinel:
   target:
     defaultEnv: local
+  notify:
+    resendIntervalSec: 600
+    ackResendEnabled: false
+    default-to: "dev@local.test"
+    from: "api-sentinel@local.test"
+    channelEnabled:
+      email: true
 
 
 #logging:
