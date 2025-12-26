@@ -54,6 +54,7 @@ public class AlertService {
             int windowSec = t.getWindowSec() == null ? 300 : t.getWindowSec();
             LocalDateTime windowStart = now.minusSeconds(windowSec);
 
+            // 探测事件表，取总查询次数
             long totalCnt = probeEventMapper.selectCount(
                     Wrappers.<ProbeEventEntity>lambdaQuery()
                             .eq(ProbeEventEntity::getTargetId, t.getId())
@@ -62,6 +63,7 @@ public class AlertService {
 
             if (totalCnt <= 0) continue;
 
+            // 取失败次数
             long failCnt = probeEventMapper.selectCount(
                     Wrappers.<ProbeEventEntity>lambdaQuery()
                             .eq(ProbeEventEntity::getTargetId, t.getId())
@@ -75,8 +77,9 @@ public class AlertService {
             double thresholdPct = t.getErrorRateThreshold().doubleValue();
             String dedupeKey = sha1(t.getId() + ":" + DbValues.AlertType.ERROR_RATE);
 
+            // 超过失败告警阈值则更新状态并发送邮件，否则设置状态为已解决
             if (errorRatePct >= thresholdPct) {
-                AlertUpsertResult r = upsertOpenOrReopen(now, windowStart, t, totalCnt, failCnt, errorRatePct, thresholdPct, dedupeKey);
+                AlertUpsertResult r = upsertOpenOrReexisting(now, windowStart, t, totalCnt, failCnt, errorRatePct, thresholdPct, dedupeKey);
                 if (r.action() == OPEN_CREATED || r.action() == REOPENED) {
                     String subject = String.format("[API Sentinel][P1][ERROR_RATE] %s (%s)", t.getName(), t.getEnv());
                     String body = buildBody(t, r.summary(), r.detailsJson());
@@ -105,7 +108,7 @@ public class AlertService {
         return t.getSilencedUntil() != null && t.getSilencedUntil().isAfter(now);
     }
 
-    private AlertUpsertResult upsertOpenOrReopen(LocalDateTime now,
+    private AlertUpsertResult upsertOpenOrReexisting(LocalDateTime now,
                                                  LocalDateTime windowStart,
                                                  TargetEntity t,
                                                  long totalCnt,
@@ -121,36 +124,29 @@ public class AlertService {
         );
         String detailsJson = buildDetailsJson(now, windowStart, t, totalCnt, failCnt, errorRatePct, thresholdPct);
 
-        // 1) 优先查 OPEN
-        AlertEventEntity open = alertEventMapper.selectOne(
+        AlertEventEntity existing = alertEventMapper.selectOne(
                 Wrappers.<AlertEventEntity>lambdaQuery()
                         .eq(AlertEventEntity::getDedupeKey, dedupeKey)
-                        .eq(AlertEventEntity::getStatus, DbValues.AlertStatus.OPEN)
                         .last("LIMIT 1")
         );
-        if (open != null) {
+
+        if (existing != null && DbValues.AlertStatus.OPEN.equals(existing.getStatus())) {
             AlertEventEntity upd = new AlertEventEntity();
-            upd.setId(open.getId());
+            upd.setId(existing.getId());
             upd.setLastSeenTs(now);
-            upd.setCountInWindow(open.getCountInWindow() == null ? 1 : open.getCountInWindow() + 1);
+            upd.setCountInWindow(existing.getCountInWindow() == null ? 1 : existing.getCountInWindow() + 1);
             upd.setSummary(abbrev(summary, 512));
             upd.setDetailsJson(detailsJson);
             alertEventMapper.updateById(upd);
 
-            return new AlertUpsertResult(AlertUpsertAction.OPEN_UPDATED, open.getId(),summary,detailsJson);
+            return new AlertUpsertResult(AlertUpsertAction.OPEN_UPDATED, existing.getId(),summary,detailsJson);
         }
 
-        // 2) 再查 ACK/RESOLVED
-        AlertEventEntity closed = alertEventMapper.selectOne(
-                Wrappers.<AlertEventEntity>lambdaQuery()
-                        .eq(AlertEventEntity::getDedupeKey, dedupeKey)
-                        .in(AlertEventEntity::getStatus, DbValues.AlertStatus.ACK, DbValues.AlertStatus.RESOLVED)
-                        .orderByDesc(AlertEventEntity::getLastSeenTs)
-                        .last("LIMIT 1")
-        );
-        if (closed != null) {
+        var isFinalized = List.of(DbValues.AlertStatus.ACK,DbValues.AlertStatus.RESOLVED);
+        if (existing != null && isFinalized.contains(existing.getStatus()))
+        {
             AlertEventEntity upd = new AlertEventEntity();
-            upd.setId(closed.getId());
+            upd.setId(existing.getId());
             upd.setStatus(DbValues.AlertStatus.OPEN);
             upd.setFirstSeenTs(now);          // REOPEN：重置
             upd.setLastSeenTs(now);
@@ -160,7 +156,7 @@ public class AlertService {
             upd.setDetailsJson(detailsJson);
             alertEventMapper.updateById(upd);
 
-            return new AlertUpsertResult(REOPENED, closed.getId(),summary,detailsJson);
+            return new AlertUpsertResult(REOPENED, existing.getId(),summary,detailsJson);
         }
 
         // 3) 都不存在 -> 插入 OPEN

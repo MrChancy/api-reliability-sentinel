@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS alert_event (
     updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_alert_event_target FOREIGN KEY (target_id) REFERENCES probe_target(id),
-    UNIQUE KEY uk_alert_dedupe_status (dedupe_key, status)
+    UNIQUE KEY uk_alert_dedupe_status (dedupe_key)
     ) ENGINE=InnoDB;
 
 CREATE INDEX idx_alert_target_status ON alert_event(target_id, status);
