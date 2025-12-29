@@ -21,7 +21,7 @@ sentinel:
   target:
     defaultEnv: local
   notify:
-    resendIntervalSec: 600
+    resendIntervalSec: 60
     ackResendEnabled: false
     default-to: "dev@local.test"
     from: "api-sentinel@local.test"

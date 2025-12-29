@@ -23,9 +23,11 @@ public class AlertEventEntity {
     @TableField("target_id")
     private Long targetId;
 
+
     @TableField("alert_type")
     private String alertType; // ERROR_RATE
 
+    /** 告警类型：ERROR_RATE / CONSEC_FAIL / TIMEOUT_SPIKE 等 */
     @TableField("alert_level")
     private String alertLevel; // P1
 
@@ -44,12 +46,15 @@ public class AlertEventEntity {
     @TableField("last_sent_ts")
     private LocalDateTime lastSentTs;
 
-    @TableField("count_in_window")
+    /** 同一告警周期内触发次数累计（演示/统计用） */
+        @TableField("count_in_window")
     private Integer countInWindow;
 
+    /** 一句话摘要（邮件标题/列表展示） */
     @TableField("summary")
     private String summary;
 
+    /** 详情 JSON（窗口、阈值、失败样本等） */
     @TableField("details_json")
     private String detailsJson; // MySQL JSON，用 String 存合法 JSON
 }

@@ -57,40 +57,6 @@ public class NotifyService {
         return props.defaultTo();
     }
 
-//    public void sendEmailForNewOpen(long alertId, TargetEntity target) {
-//        String to = resolveReceiver(target);
-//        String subject = buildSubject(alertId, target);
-//        String body = buildBody(alertId, target);
-//
-//        try {
-//            emailNotifier.send(to, subject, body);
-//
-//            notifyLogMapper.insert(NotifyLogEntity.builder()
-//                    .alertId(alertId)
-//                    .channel(DbValues.NotifyChannel.EMAIL)
-//                    .receiver(to)
-//                    .status(DbValues.NotifyStatus.SENT)
-//                    .errorMsg(null)
-//                    .build());
-//
-//            // 更新 last_sent_ts（不要求在同一事务里）
-//            AlertEventEntity upd = new AlertEventEntity();
-//            upd.setId(alertId);
-//            upd.setLastSentTs(LocalDateTime.now());
-//            alertEventMapper.updateById(upd);
-//
-//        } catch (Exception e) {
-//            notifyLogMapper.insert(NotifyLogEntity.builder()
-//                    .alertId(alertId)
-//                    .channel(DbValues.NotifyChannel.EMAIL)
-//                    .receiver(to)
-//                    .status(DbValues.NotifyStatus.FAIL)
-//                    .errorMsg(abbrev(e.getClass().getSimpleName() + ": " + e.getMessage(), 512))
-//                    .build());
-//            // 不抛出，避免影响告警事件落库与下一轮扫描
-//        }
-//    }
-
 
 
     private String abbrev(String s, int max) {

@@ -23,6 +23,7 @@
         <module>sentinel-app</module>
         <module>probe</module>
         <module>alert</module>
+        <module>sentinel-common</module>
     </modules>
 
     <url>https://github.com/MrChancy/api-reliability-sentinel</url>
@@ -68,6 +69,11 @@
             <dependency>
                 <groupId>com.fluffycat</groupId>
                 <artifactId>alert</artifactId>
+                <version>0.0.1-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fluffycat</groupId>
+                <artifactId>sentinel-common</artifactId>
                 <version>0.0.1-SNAPSHOT</version>
             </dependency>
 

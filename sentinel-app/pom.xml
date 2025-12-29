@@ -23,6 +23,10 @@
             <artifactId>alert</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.fluffycat</groupId>
+            <artifactId>sentinel-common</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
