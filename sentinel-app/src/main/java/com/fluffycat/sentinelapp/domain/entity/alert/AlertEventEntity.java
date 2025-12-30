@@ -1,9 +1,6 @@
 package com.fluffycat.sentinelapp.domain.entity.alert;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -57,4 +54,10 @@ public class AlertEventEntity {
     /** 详情 JSON（窗口、阈值、失败样本等） */
     @TableField("details_json")
     private String detailsJson; // MySQL JSON，用 String 存合法 JSON
+
+    /** 创建时间/更新时间：审计用途 */
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
+    private LocalDateTime createdAt;
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
+    private LocalDateTime updatedAt;
 }
