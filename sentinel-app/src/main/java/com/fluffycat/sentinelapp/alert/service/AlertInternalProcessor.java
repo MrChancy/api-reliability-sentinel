@@ -40,8 +40,6 @@ public class AlertInternalProcessor {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int processSingle(TargetEntity t) {
         LocalDateTime now = LocalDateTime.now();
-        if (isSilenced(t, now))
-            return 0;
 
         int windowSec = t.getWindowSec() == null ? 300 : t.getWindowSec();
         LocalDateTime windowStart = now.minusSeconds(windowSec);
@@ -240,10 +238,6 @@ public class AlertInternalProcessor {
         return 1;
     }
 
-
-    private boolean isSilenced(TargetEntity t, LocalDateTime now) {
-        return t.getSilencedUntil() != null && t.getSilencedUntil().isAfter(now);
-    }
 
     private String buildDetailsJson(LocalDateTime now,
                                     LocalDateTime windowStart,

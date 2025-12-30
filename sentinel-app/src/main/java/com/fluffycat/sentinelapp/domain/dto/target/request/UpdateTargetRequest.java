@@ -16,6 +16,7 @@ public class UpdateTargetRequest {
     @Schema(description = "错误率阈值（百分比）", example = "50.0")
     private BigDecimal errorRateThreshold;
 
+    @Schema(description = "静默时间（分钟）", example = "5")
     private Integer silenceMinutes;
     @Schema(description = "探测周期（秒）", example = "60")
     private Integer intervalSec;

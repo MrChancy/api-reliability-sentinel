@@ -6,20 +6,28 @@ import com.fluffycat.sentinelapp.domain.dto.target.response.TargetResponse;
 import com.fluffycat.sentinelapp.domain.entity.target.TargetEntity;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Optional;
 
 public final class TargetConverter {
 
-    private TargetConverter() {}
+    private TargetConverter() {
+    }
 
     // ====== Request -> Entity ======
 
-    public static TargetEntity toEntity(CreateTargetRequest req,String env) {
+    public static TargetEntity toEntity(CreateTargetRequest req, String env) {
         // 默认值策略（M1）
         Integer intervalSec = defaultInt(req.getIntervalSec(), 60);
         Integer timeoutMs = defaultInt(req.getTimeoutMs(), 800);
         Integer retries = defaultInt(req.getRetries(), 0);
         Integer windowSec = defaultInt(req.getWindowSec(), 300);
         BigDecimal threshold = defaultDouble(req.getErrorRateThreshold(), BigDecimal.valueOf(50.0));
+        LocalDateTime silenceUntil = Optional.ofNullable(req.getSilenceMinutes())
+                .map(LocalDateTime.now()::plusMinutes)
+                .orElse(null);
+
+
 
         return TargetEntity.builder()
                 .name(trim(req.getName()))
@@ -32,6 +40,8 @@ public final class TargetConverter {
                 .retries(retries)
                 .windowSec(windowSec)
                 .errorRateThreshold(threshold)
+                .silencedUntil(silenceUntil)
+                .silenceReason(req.getSilenceReason())
                 .tags(trim(req.getTags()))
                 .owner(trim(req.getOwner()))
                 .env(env)
@@ -47,6 +57,11 @@ public final class TargetConverter {
         if (req.getMethod() != null) existing.setMethod(req.getMethod());
         if (req.getBaseUrl() != null) existing.setBaseUrl(trim(req.getBaseUrl()));
         if (req.getPath() != null) existing.setPath(normalizePath(req.getPath()));
+        if (req.getSilenceMinutes() != null) {
+            LocalDateTime silenceUntil = LocalDateTime.now().plusMinutes(req.getSilenceMinutes());
+            existing.setSilencedUntil(silenceUntil);
+        }
+        if (req.getSilenceReason()!=null) existing.setSilenceReason(req.getSilenceReason());
 
         if (req.getIntervalSec() != null) existing.setIntervalSec(req.getIntervalSec());
         if (req.getTimeoutMs() != null) existing.setTimeoutMs(req.getTimeoutMs());
@@ -56,7 +71,7 @@ public final class TargetConverter {
 
         if (req.getTags() != null) existing.setTags(trim(req.getTags()));
         if (req.getOwner() != null) existing.setOwner(trim(req.getOwner()));
-        if (req.getEnv()!=null) existing.setEnv(req.getEnv());
+        if (req.getEnv() != null) existing.setEnv(req.getEnv());
 
         // 如果 updated_at 交给 DB on update，这里不必 set；否则：
         // existing.setUpdatedAt(LocalDateTime.now());
