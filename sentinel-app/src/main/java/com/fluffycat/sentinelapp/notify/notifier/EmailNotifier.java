@@ -21,5 +21,14 @@ public class EmailNotifier {
         msg.setText(content);
         mailSender.send(msg);
     }
+
+    public void send(String[] to, String subject, String content) {
+        SimpleMailMessage msg = new SimpleMailMessage();
+        msg.setFrom(props.from());
+        msg.setTo(to);
+        msg.setSubject(subject);
+        msg.setText(content);
+        mailSender.send(msg);
+    }
 }
 

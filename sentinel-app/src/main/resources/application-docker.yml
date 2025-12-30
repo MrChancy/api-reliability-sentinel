@@ -25,3 +25,9 @@ sentinel:
     from: "api-sentinel@local.test"
     channelEnabled:
       email: true
+    tag-routes:
+      payment: pay@fluffycat.com
+      order: order@fluffycat.com
+    env-routes:
+      docker: on-call@fluffycat.com
+      local: dev@fluffycat.com

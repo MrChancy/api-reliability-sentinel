@@ -45,6 +45,26 @@ public class AlertService {
     }
 
     public AlertResponse ack(String id) {
+        AlertEventEntity entity = setAlertEventStatus(id,DbValues.AlertStatus.ACK);
+
+        return AlertResponse.builder()
+                .id(String.valueOf(entity.getId()))
+                .status(entity.getStatus())
+                .updatedAt(LocalDateTime.now())
+                .build();
+    }
+
+    public AlertResponse resolved(String id) {
+        AlertEventEntity entity = setAlertEventStatus(id,DbValues.AlertStatus.RESOLVED);
+
+        return AlertResponse.builder()
+                .id(String.valueOf(entity.getId()))
+                .status(entity.getStatus())
+                .updatedAt(LocalDateTime.now())
+                .build();
+    }
+
+    public AlertEventEntity setAlertEventStatus(String id, String status){
         Long alertId = Long.valueOf(id);
         AlertEventEntity entity = alertEventMapper.selectById(alertId);
 
@@ -52,18 +72,11 @@ public class AlertService {
             throw new BusinessException(ErrorCode.NOT_FOUND, "update alert event not found! alertId: " + id);
         }
 
-        entity.setStatus(DbValues.AlertStatus.ACK);
+        entity.setStatus(status);
 
-        boolean success = alertEventMapper.updateById(entity) > 0;
-
-        if (success) {
-            AlertResponse r = AlertResponse.builder()
-                    .id(String.valueOf(entity.getId()))
-                    .status(entity.getStatus())
-                    .updatedAt(LocalDateTime.now())
-                    .build();
-            return r;
-        } else {
+        if(alertEventMapper.updateById(entity) > 0){
+            return entity;
+        }else{
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, "update alert event error! alertId: " + id);
         }
     }

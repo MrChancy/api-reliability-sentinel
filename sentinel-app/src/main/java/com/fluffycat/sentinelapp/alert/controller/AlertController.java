@@ -20,4 +20,10 @@ public class AlertController {
         AlertResponse r = alertService.ack(id);
         return ResponseEntity.ok(Result.success(r));
     }
+
+    @PostMapping("/{id}/resolved")
+    public ResponseEntity<Result<AlertResponse>> resolved(@PathVariable String id){
+        AlertResponse r = alertService.resolved(id);
+        return ResponseEntity.ok(Result.success(r));
+    }
 }

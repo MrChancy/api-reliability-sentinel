@@ -137,8 +137,8 @@ public class AlertInternalProcessor {
                         .eq(AlertEventEntity::getDedupeKey, dedupeKey)
                         .last("LIMIT 1")
         );
-
-        if (existing != null && DbValues.AlertStatus.OPEN.equals(existing.getStatus())) {
+        List<String> unsolved = List.of(DbValues.AlertStatus.OPEN,DbValues.AlertStatus.ACK);
+        if (existing != null && unsolved.contains(existing.getStatus())) {
             AlertEventEntity upd = new AlertEventEntity();
             upd.setId(existing.getId());
             upd.setLastSeenTs(now);
@@ -150,8 +150,7 @@ public class AlertInternalProcessor {
             return new AlertInternalProcessor.AlertUpsertResult(AlertUpsertAction.OPEN_UPDATED, existing.getId(),summary,detailsJson);
         }
 
-        var isFinalized = List.of(DbValues.AlertStatus.ACK,DbValues.AlertStatus.RESOLVED);
-        if (existing != null && isFinalized.contains(existing.getStatus()))
+        if (existing != null && DbValues.AlertStatus.RESOLVED.equals(existing.getStatus()))
         {
             AlertEventEntity upd = new AlertEventEntity();
             upd.setId(existing.getId());
