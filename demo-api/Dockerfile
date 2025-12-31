@@ -8,6 +8,7 @@ COPY demo-api/pom.xml demo-api/pom.xml
 COPY sentinel-app/pom.xml sentinel-app/pom.xml
 COPY probe/pom.xml probe/pom.xml
 COPY alert/pom.xml alert/pom.xml
+COPY sentinel-common/pom.xml sentinel-common/pom.xml
 
 # 2) 预拉依赖（只针对 demo-api，但需要解析父工程）
 RUN mvn -q -e -DskipTests -pl demo-api -am dependency:go-offline

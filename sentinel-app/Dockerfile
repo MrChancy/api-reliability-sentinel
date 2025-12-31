@@ -8,6 +8,7 @@ COPY sentinel-app/pom.xml sentinel-app/pom.xml
 COPY probe/pom.xml probe/pom.xml
 COPY alert/pom.xml alert/pom.xml
 COPY demo-api/pom.xml demo-api/pom.xml
+COPY sentinel-common/pom.xml sentinel-common/pom.xml
 
 # 2) 预拉依赖
 RUN mvn -q -e -DskipTests -pl sentinel-app -am dependency:go-offline
@@ -16,6 +17,7 @@ RUN mvn -q -e -DskipTests -pl sentinel-app -am dependency:go-offline
 COPY probe/src probe/src
 COPY alert/src alert/src
 COPY sentinel-app/src sentinel-app/src
+COPY sentinel-common/src sentinel-common/src
 
 # 4) 打包 sentinel-app
 RUN mvn -q -DskipTests -pl sentinel-app -am package

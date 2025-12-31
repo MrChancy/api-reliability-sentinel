@@ -3,18 +3,17 @@ package com.fluffycat.sentinelapp.target.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fluffycat.sentinelapp.common.api.ErrorCode;
 import com.fluffycat.sentinelapp.common.exception.BusinessException;
 import com.fluffycat.sentinelapp.common.pagination.PageRequest;
 import com.fluffycat.sentinelapp.common.pagination.PageRequests;
 import com.fluffycat.sentinelapp.common.pagination.PageResponse;
-import com.fluffycat.sentinelapp.target.config.TargetProperties;
-import com.fluffycat.sentinelapp.target.converter.TargetConverter;
 import com.fluffycat.sentinelapp.domain.dto.target.request.CreateTargetRequest;
 import com.fluffycat.sentinelapp.domain.dto.target.request.UpdateTargetRequest;
 import com.fluffycat.sentinelapp.domain.dto.target.response.TargetResponse;
 import com.fluffycat.sentinelapp.domain.entity.target.TargetEntity;
+import com.fluffycat.sentinelapp.target.config.TargetProperties;
+import com.fluffycat.sentinelapp.target.converter.TargetConverter;
 import com.fluffycat.sentinelapp.target.repo.TargetMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +33,6 @@ public class TargetService {
     private final TargetProperties targetProperties;
     private final PageRequests pageRequests;
     private final TargetMapper targetMapper;
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Transactional
     public TargetResponse createTarget(CreateTargetRequest request) {

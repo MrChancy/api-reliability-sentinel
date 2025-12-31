@@ -70,7 +70,8 @@ services:
       MAIL_FROM: ${MAIL_FROM}
       MAIL_TO: ${MAIL_TO}
     ports:
-      - "8080:8080"
+      - "8080"
+#      - "8080:8080"
     depends_on:
       mysql:
         condition: service_healthy
@@ -81,14 +82,30 @@ services:
 
   mailhog:
     image: mailhog/mailhog:latest
+    container_name: api-sentinel-mailhog
     ports:
       - "8025:8025"   # Web UI
       - "1025:1025"   # SMTP
     networks:
       - sentinel_net
 
+  redis:
+      image: redis:7-alpine
+      container_name: api-sentinel-redis
+      ports:
+        - "6379:6379"
+      networks:
+        - sentinel_net
+      healthcheck:
+        test: ["CMD","redis-cli","ping"]
+        interval: 5s
+        timeout: 3s
+        retries: 10
+
+
 networks:
   sentinel_net:
+    driver: bridge
 
 volumes:
   mysql_data:

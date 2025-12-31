@@ -8,6 +8,11 @@ spring:
       mail.smtp.ssl.enable: false
   datasource:
     url: jdbc:mysql://${DB_HOST:mysql}:${DB_PORT:3306}/${DB_NAME:api_sentinel}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
 
 springdoc:
   api-docs:
