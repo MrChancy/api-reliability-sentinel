@@ -1,5 +1,6 @@
 package com.fluffycat.sentinelapp.probe.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fluffycat.sentinelapp.common.exception.BusinessException;
 import com.fluffycat.sentinelapp.common.api.ErrorCode;
 import com.fluffycat.sentinelapp.domain.entity.probe.ProbeEventEntity;
@@ -10,12 +11,9 @@ import com.fluffycat.sentinelapp.probe.repo.ProbeEventMapper;
 import com.fluffycat.sentinelapp.target.repo.TargetMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.OkHttpClient;
+import okhttp3.*;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -24,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
-public class ProbeService {
+public class ProbeRunnerService {
 
     private final TargetMapper targetMapper;
     private final ProbeEventMapper probeEventMapper;
@@ -93,10 +91,7 @@ public class ProbeService {
     private ProbeResult probeOnce(TargetEntity target) {
         String url = buildUrl(target);
 
-        Request request = new Request.Builder()
-                .url(url)
-                .get() // M1 先固定 GET
-                .build();
+        Request request = buildRequest(target,url);
 
         long startNs = System.nanoTime();
 
@@ -146,6 +141,67 @@ public class ProbeService {
                 errorMsg, sampleJson);
     }
 
+    private Request buildRequest(TargetEntity target, String url) {
+        String method = safeUpper(target.getMethod(), "GET");
+
+        Request.Builder b = new Request.Builder().url(url);
+
+        // headers
+        Map<String, String> headers = parseHeaders(target.getHeadersJson());
+        // 默认 Content-Type（仅当有 body 且未显式指定）
+        boolean hasBodyMethod = method.equals("POST") || method.equals("PUT") || method.equals("PATCH");
+        if (hasBodyMethod && !containsIgnoreCase(headers, "Content-Type")) {
+            headers.put("Content-Type", "application/json");
+        }
+        headers.forEach(b::addHeader);
+
+        // body
+        RequestBody requestBody = null;
+        if (hasBodyMethod) {
+            String bodyJson = target.getBodyJson();
+            if (bodyJson == null || bodyJson.isBlank()) bodyJson = "{}";
+            MediaType mt = MediaType.parse(headers.getOrDefault("Content-Type", "application/json"));
+            requestBody = RequestBody.create(bodyJson, mt);
+        }
+
+        // method binding
+        switch (method) {
+            case "GET" -> b.get();
+            case "POST" -> b.post(requestBody);
+            case "PUT" -> b.put(requestBody);
+            case "PATCH" -> b.patch(requestBody);
+            case "DELETE" -> {
+                b.delete();
+            }
+            case "HEAD" -> b.head();
+            default -> throw new IllegalArgumentException("Unsupported method: " + method);
+        }
+
+        return b.build();
+    }
+
+    private Map<String, String> parseHeaders(String headersJson) {
+        if (headersJson == null || headersJson.isBlank()) return new HashMap<>();
+        try {
+            return objectMapper.readValue(headersJson, new TypeReference<Map<String, String>>() {});
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid headers_json: " + abbreviate(headersJson, 128), e);
+        }
+    }
+
+    private boolean containsIgnoreCase(Map<String,String> map, String key) {
+        for (String k : map.keySet()) {
+            if (k != null && k.equalsIgnoreCase(key)) return true;
+        }
+        return false;
+    }
+
+    private String safeUpper(String s, String dft) {
+        if (s == null || s.isBlank()) return dft;
+        return s.trim().toUpperCase();
+    }
+
+
     private String buildUrl(TargetEntity target) {
         String base = stripTrailingSlash(target.getBaseUrl());
         String path = target.getPath();
@@ -174,7 +230,6 @@ public class ProbeService {
     }
 
     private String classifyByException(Exception e) {
-        // 可按需细化；这里给一个实用的最小分类
         String n = e.getClass().getName();
         if (n.contains("SocketTimeoutException")) return "TIMEOUT";
         if (n.contains("UnknownHostException")) return "DNS";

@@ -97,4 +97,22 @@ public class TargetEntity {
 
     /** 运行环境：local/docker/prod 等，用于路由/筛选/多环境隔离 */
     private String env;
+
+    /**
+     * 下次探测时间
+     */
+    private LocalDateTime nextProbeTs;
+    /**
+     * 上一次探测时间
+     */
+    private LocalDateTime lastProbeTs;
+    /**
+     * 租期直到，防止并发重复获取
+     */
+    private LocalDateTime leaseUntil;
+    /**
+     * 租借方
+     */
+    private String leaseOwner;
+
 }

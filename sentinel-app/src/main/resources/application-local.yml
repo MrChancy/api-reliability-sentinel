@@ -38,6 +38,11 @@ sentinel:
     env-routes:
       docker: on-call@fluffycat.com
       local: dev@fluffycat.com
+  probe:
+    env: local
+    batch-size: 20
+    lease-sec: 30
+    tick-ms: 1000
 
 
 #logging:

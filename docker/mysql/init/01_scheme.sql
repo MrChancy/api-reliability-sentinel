@@ -103,3 +103,11 @@ CREATE TABLE IF NOT EXISTS notify_log (
 
 CREATE INDEX idx_notify_alert ON notify_log(alert_id);
 
+---Alter Table
+ALTER TABLE probe_target
+  ADD COLUMN next_probe_ts DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ADD COLUMN last_probe_ts DATETIME NULL,
+  ADD COLUMN lease_until  DATETIME NULL,
+  ADD COLUMN lease_owner  VARCHAR(64) NULL;
+
+CREATE INDEX idx_probe_due ON probe_target(env, enabled, next_probe_ts, lease_until);

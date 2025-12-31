@@ -125,8 +125,8 @@ public class AlertInternalProcessor {
 
         String alertType = DbValues.AlertType.ERROR_RATE;
         String summary = String.format(
-                "ERROR_RATE breach: %.2f%% >= %.2f%%, window=%ds, total=%d, fail=%d, target=%s %s",
-                errorRatePct, thresholdPct, t.getWindowSec(), totalCnt, failCnt, t.getBaseUrl(), t.getPath()
+                "Name:%s, ERROR_RATE breach: %.2f%% >= %.2f%%, window=%ds, total=%d, fail=%d, target=%s %s",
+                t.getName(),errorRatePct, thresholdPct, t.getWindowSec(), totalCnt, failCnt, t.getBaseUrl(), t.getPath()
         );
         String detailsJson = buildDetailsJson(now, windowStart, t, totalCnt, failCnt, errorRatePct, thresholdPct);
 
