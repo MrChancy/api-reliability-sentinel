@@ -1,13 +1,18 @@
 package com.fluffycat.sentinelapp.dashboard.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fluffycat.sentinelapp.common.env.EnvResolver;
+import com.fluffycat.sentinelapp.common.pagination.PageRequest;
+import com.fluffycat.sentinelapp.common.pagination.PageRequests;
+import com.fluffycat.sentinelapp.common.pagination.PageResponse;
 import com.fluffycat.sentinelapp.dashboard.config.DashboardProperties;
 import com.fluffycat.sentinelapp.dashboard.repo.DashboardMapper;
-import com.fluffycat.sentinelapp.domain.dto.dashboard.response.AlertsOverviewResponse;
+import com.fluffycat.sentinelapp.domain.dto.dashboard.response.AlertOverviewItem;
 import com.fluffycat.sentinelapp.domain.dto.dashboard.response.TargetOverviewItem;
 import com.fluffycat.sentinelapp.domain.dto.dashboard.response.TargetTimeseriesResponse;
 import com.fluffycat.sentinelapp.domain.dto.dashboard.response.TargetsOverviewResponse;
 import com.fluffycat.sentinelapp.domain.entity.target.TargetEntity;
+import com.fluffycat.sentinelapp.domain.enums.alert.AlertEventStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +32,7 @@ public class DashboardService {
     private final DashboardMapper dashboardMapper;
     private final EnvResolver envResolver;
     private final DashboardProperties dashboardProperties;
+    private final PageRequests pageRequests;
 
     public TargetsOverviewResponse getTargetsOverview(String env) {
         String resolvedEnv = envResolver.resolve(env);
@@ -106,8 +112,15 @@ public class DashboardService {
                 .build();
     }
 
-    public AlertsOverviewResponse getAlertsOverview(String env, String status) {
-        throw new UnsupportedOperationException();
+    public PageResponse<AlertOverviewItem> getAlertsOverview(String env, AlertEventStatus status, Integer page, Integer size) {
+        String resolvedEnv = envResolver.resolve(env);
+
+        PageRequest pageRequest = pageRequests.of(page, size);
+
+        Page<DashboardMapper.AlertOverviewRow> rows =
+                dashboardMapper.selectAlertsOverview(Page.of(pageRequest.getPage(),pageRequest.getSize()),resolvedEnv, status);
+
+        return PageResponse.from(rows, null);
     }
 
     public TargetTimeseriesResponse getTargetTimeseries(Long targetId, String env) {

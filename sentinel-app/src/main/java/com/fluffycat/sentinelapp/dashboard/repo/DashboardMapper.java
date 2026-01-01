@@ -1,6 +1,9 @@
 package com.fluffycat.sentinelapp.dashboard.repo;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fluffycat.sentinelapp.domain.entity.target.TargetEntity;
+import com.fluffycat.sentinelapp.domain.enums.alert.AlertEventStatus;
 import lombok.Getter;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -74,6 +77,37 @@ public interface DashboardMapper {
         """)
     List<TargetAlertRow> selectLatestAlertByTargets(@Param("targetIdsCsv") String targetIdsCsv);
 
+    @Select("""
+    SELECT
+      a.id            AS alertId,
+      a.target_id     AS targetId,
+      a.alert_type    AS alertType,
+      a.alert_level   AS alertLevel,
+      a.status        AS status,
+      a.first_seen_ts AS firstSeenTs,
+      a.last_seen_ts  AS lastSeenTs,
+      a.last_sent_ts  AS lastSentTs,
+      a.count_in_window AS countInWindow,
+      a.summary       AS summary,
+
+      t.name          AS targetName,
+      t.method        AS method,
+      t.base_url      AS baseUrl,
+      t.path          AS path,
+      t.owner         AS owner,
+      t.silenced_until AS silencedUntil
+    FROM alert_event a
+    JOIN probe_target t ON t.id = a.target_id
+    WHERE t.env = #{env}
+      AND (#{status} IS NULL OR #{status} = '' OR a.status = #{status})
+    ORDER BY a.last_seen_ts DESC
+    LIMIT #{limit} OFFSET #{offset}
+    """)
+    Page<AlertOverviewRow> selectAlertsOverview(IPage<?> page,
+                                                @Param("env") String env,
+                                                @Param("status") AlertEventStatus status);
+
+
 
     @Getter
     class TargetAggRow {
@@ -96,4 +130,30 @@ public interface DashboardMapper {
         private LocalDateTime lastSeenTs;
         private LocalDateTime lastSentTs;
     }
+
+    @Getter
+    class AlertOverviewRow {
+        private Long alertId;
+        private Long targetId;
+
+        private String alertType;
+        private String alertLevel;
+        private String status;
+
+        private LocalDateTime firstSeenTs;
+        private LocalDateTime lastSeenTs;
+        private LocalDateTime lastSentTs;
+
+        private Integer countInWindow;
+        private String summary;
+
+        private String targetName;
+        private String method;
+        private String baseUrl;
+        private String path;
+
+        private String owner;
+        private LocalDateTime silencedUntil;
+    }
+
 }

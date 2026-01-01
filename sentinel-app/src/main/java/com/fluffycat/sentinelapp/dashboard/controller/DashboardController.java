@@ -1,8 +1,10 @@
 package com.fluffycat.sentinelapp.dashboard.controller;
 
 import com.fluffycat.sentinelapp.common.api.Result;
+import com.fluffycat.sentinelapp.common.pagination.PageResponse;
 import com.fluffycat.sentinelapp.dashboard.service.DashboardService;
 import com.fluffycat.sentinelapp.domain.dto.dashboard.response.*;
+import com.fluffycat.sentinelapp.domain.enums.alert.AlertEventStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,11 +25,13 @@ public class DashboardController {
     }
 
     @GetMapping("/dashboard/alerts")
-    public ResponseEntity<Result<AlertsOverviewResponse>> getAlertsOverview(
+    public ResponseEntity<Result<PageResponse<AlertOverviewItem>>> getAlertsOverview(
             @RequestParam(required = false) String env,
-            @RequestParam(defaultValue = "OPEN") String status
+            @RequestParam(defaultValue = "OPEN") AlertEventStatus status,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "20") Integer size
     ) {
-        AlertsOverviewResponse resp = dashboardService.getAlertsOverview(env, status);
+        PageResponse<AlertOverviewItem> resp = dashboardService.getAlertsOverview(env,status,page, size);
         return ResponseEntity.ok(Result.success(resp));
     }
 
