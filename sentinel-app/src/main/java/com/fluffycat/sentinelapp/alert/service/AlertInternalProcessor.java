@@ -182,7 +182,7 @@ public class AlertInternalProcessor {
             alertEventMapper.insert(ev);
             return new AlertUpsertResult(OPEN_CREATED, ev.getId(),summary,detailsJson);
         } catch (DuplicateKeyException ex) {
-            // 并发兜底：别人刚插入了 OPEN，退化为更新 OPEN
+            // 并发兜底
             AlertEventEntity justOpen = alertEventMapper.selectOne(
                     Wrappers.<AlertEventEntity>lambdaQuery()
                             .eq(AlertEventEntity::getDedupeKey, dedupeKey)

@@ -8,14 +8,20 @@
 * 告警如何**分级、去重、聚合**，避免告警风暴？
 * 如何把“发现问题 → 定位问题 → 恢复问题”做成机制闭环（MTTD/MTTR）？
 
-### 主要能力（M1）
-
+### 主要能力
+### M1（已完成）
 * **Target 管理**：配置探测目标（方法、URL、超时、重试、窗口、阈值、静默等）
 * **Probe 事件归集**：对目标接口发起探测并写入 `probe_event`
 * **Alert 聚合去重**：按窗口聚合生成/合并 `alert_event`（ERROR_RATE）
 * **通知通道（Email）**：OPEN / REOPEN 触发邮件，写入 `notify_log`（本地默认 MailHog）
 * **可追溯性**：关键链路落库，可通过 DB 或 API 复盘（接入 TraceId）
-
+### M2（已完成）
+* **告警状态机**：（OPEN / ACK / RESOLVED / REOPEN）
+* **频控重发**：M2 引入了统一的通知决策策略 `NotifyPolicy`，防止重复发送相同告警
+* **告警事件和通知解耦**：采用端口-适配器结构，M2采用Spring进程内发布订阅模式，M3可方便接入到 MQ + Outbox Pattern
+* **Redis去重/节流锁**：解决多实例并发发送的竞态问题，DB 的 `last_sent_ts` 仍是权威频控记录
+* **责任人路由**：采用DB记录和配置让通知送达能解决问题的地方
+* **并发探测**：多线程并发探测，提供更接近生产的探测场景
 ---
 
 ## 架构概览
@@ -25,13 +31,13 @@
 | Probe Scheduler   |  ----------------------->  | Alert Aggregator |
 | (interval/timeout)|                            | (dedupe/window)  |
 +---------+---------+                            +--------+---------+
-          |                                           |
-          | http checks                               | notifications
-          v                                           v
-+-------------------+                      +----------------------+
-| Target APIs (demo)|                      | Email Notifier       |
-| /demo/ok/error/...|                      | (MailHog in local)   |
-+-------------------+                      +----------------------+
+          |                                               |
+          | http checks                                   | notifications
+          v                                               v
++-------------------+                          +----------------------+
+| Target APIs (demo)|                          | Email Notifier       |
+| /demo/ok/error/...|                          | (MailHog in local)   |
++-------------------+                          +----------------------+
           |
           v
 +-------------------+
