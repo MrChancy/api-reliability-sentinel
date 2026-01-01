@@ -29,6 +29,10 @@ sentinel:
     notify:
         default-to: "dev@local.test"
         from: "api-sentinel@local.test"
+    dashboard:
+        target-window-minutes: 5
+    enable-job: true
+
 
 springdoc:
     api-docs:

@@ -8,6 +8,7 @@ import com.fluffycat.sentinelapp.probe.service.ProbeRunnerService;
 import com.fluffycat.sentinelapp.probe.service.ProbeSchedulerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
@@ -29,6 +30,9 @@ public class ProbeJob {
 
     private final AtomicBoolean ticking = new AtomicBoolean(false);
 
+    @Value("${sentinel.enable-job:true}")
+    private Boolean enableJob;
+
     private String ownerId() {
         // 多实例时区分：可以用 hostname + pid，或随机 UUID（启动时生成一次）
         return InstanceIdHolder.ID;
@@ -36,6 +40,7 @@ public class ProbeJob {
 
     @Scheduled(fixedDelayString = "${sentinel.probe.tick-ms:1000}")
     public void tick() {
+        if (!enableJob) return;
 
         // 防止 tick 重入（单实例内）
         if (!ticking.compareAndSet(false, true)) return;
