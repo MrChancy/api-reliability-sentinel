@@ -107,6 +107,68 @@ public interface DashboardMapper {
                                                 @Param("env") String env,
                                                 @Param("status") AlertEventStatus status);
 
+    @Select("""
+    SELECT
+      FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(ts) / #{bucketSec}) * #{bucketSec}) AS bucketTs,
+      COUNT(*) AS totalCnt,
+      SUM(CASE WHEN status = 'FAIL' THEN 1 ELSE 0 END) AS failCnt,
+      CAST(AVG(rt_ms) AS SIGNED) AS avgRtMs
+    FROM probe_event
+    WHERE target_id = #{targetId}
+      AND ts >= #{startTs}
+      AND ts < #{endTs}
+    GROUP BY bucketTs
+    ORDER BY bucketTs ASC
+    """)
+    List<TimeseriesAggRow> selectTargetTimeseriesAgg(@Param("targetId") Long targetId,
+                                                     @Param("startTs") LocalDateTime startTs,
+                                                     @Param("endTs") LocalDateTime endTs,
+                                                     @Param("bucketSec") int bucketSec);
+
+    @Select("""
+    WITH w AS (
+      SELECT
+        FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(ts) / #{bucketSec}) * #{bucketSec}) AS bucketTs,
+        rt_ms,
+        CUME_DIST() OVER (
+          PARTITION BY FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(ts) / #{bucketSec}) * #{bucketSec})
+          ORDER BY rt_ms
+        ) AS cd
+      FROM probe_event
+      WHERE target_id = #{targetId}
+        AND ts >= #{startTs}
+        AND ts < #{endTs}
+        AND rt_ms IS NOT NULL
+    )
+    SELECT
+      bucketTs,
+      MAX(CASE WHEN cd <= 0.95 THEN rt_ms END) AS p95RtMs
+    FROM w
+    GROUP BY bucketTs
+    ORDER BY bucketTs ASC
+    """)
+    List<TimeseriesP95Row> selectTargetTimeseriesP95(@Param("targetId") Long targetId,
+                                                     @Param("startTs") LocalDateTime startTs,
+                                                     @Param("endTs") LocalDateTime endTs,
+                                                     @Param("bucketSec") int bucketSec);
+
+
+    @Select("""
+    SELECT
+      COALESCE(error_type, 'UNKNOWN') AS errorType,
+      COUNT(*) AS cnt
+    FROM probe_event
+    WHERE target_id = #{targetId}
+      AND ts >= #{startTs}
+      AND ts < #{endTs}
+      AND status = 'FAIL'
+    GROUP BY COALESCE(error_type, 'UNKNOWN')
+    ORDER BY cnt DESC
+    """)
+    List<ErrorTypeBreakdownRow> selectErrorTypeBreakdown(@Param("targetId") Long targetId,
+                                                         @Param("startTs") LocalDateTime startTs,
+                                                         @Param("endTs") LocalDateTime endTs);
+
 
 
     @Getter
@@ -155,5 +217,24 @@ public interface DashboardMapper {
         private String owner;
         private LocalDateTime silencedUntil;
     }
+    @Getter
+    class TimeseriesAggRow {
+        private LocalDateTime bucketTs;
+        private Long totalCnt;
+        private Long failCnt;
+        private Integer avgRtMs;
+    }
+    @Getter
+    class TimeseriesP95Row {
+        private LocalDateTime bucketTs;
+        private Integer p95RtMs;
+    }
+    @Getter
+    class ErrorTypeBreakdownRow {
+        private String errorType;
+        private Long cnt;
+    }
+
+
 
 }
