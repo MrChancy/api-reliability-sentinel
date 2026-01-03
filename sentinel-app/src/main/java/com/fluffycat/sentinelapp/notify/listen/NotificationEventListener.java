@@ -1,6 +1,7 @@
 package com.fluffycat.sentinelapp.notify.listen;
 
 import com.fluffycat.sentinelapp.alert.repo.AlertEventMapper;
+import com.fluffycat.sentinelapp.common.metrics.SentinelMetrics;
 import com.fluffycat.sentinelapp.domain.entity.alert.AlertEventEntity;
 import com.fluffycat.sentinelapp.domain.entity.target.TargetEntity;
 import com.fluffycat.sentinelapp.notify.config.NotifyProperties;
@@ -28,6 +29,7 @@ public class NotificationEventListener {
     private final AlertEventMapper alertEventMapper;
     private final NotifyProperties notifyProperties;
     private final RedisSendLock redisSendLock;
+    private final SentinelMetrics metrics;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void on(NotificationPort.AlertNotificationCommand cmd) {
@@ -38,6 +40,7 @@ public class NotificationEventListener {
 
         boolean acquired = redisSendLock.tryAcquire(cmd.dedupeKey(), Duration.ofSeconds(intervalSec));
         if (!acquired) {
+            metrics.incNotifyThrottled("REDIS_LOCK");
             log.info("Send suppressed by redis lock, alertId={}, dedupekey={}", cmd.alertId(), cmd.dedupeKey());
             return;
         }

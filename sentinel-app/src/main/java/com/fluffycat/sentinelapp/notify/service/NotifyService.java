@@ -2,6 +2,7 @@ package com.fluffycat.sentinelapp.notify.service;
 
 import com.fluffycat.sentinelapp.alert.repo.AlertEventMapper;
 import com.fluffycat.sentinelapp.common.constants.DbValues;
+import com.fluffycat.sentinelapp.common.metrics.SentinelMetrics;
 import com.fluffycat.sentinelapp.common.util.EmailUtils;
 import com.fluffycat.sentinelapp.domain.entity.alert.AlertEventEntity;
 import com.fluffycat.sentinelapp.domain.entity.notify.NotifyLogEntity;
@@ -25,11 +26,14 @@ public class NotifyService {
     private final AlertEventMapper alertEventMapper;
     private final EmailNotifier emailNotifier;
     private final NotifyProperties notifyProperties;
+    private final SentinelMetrics metrics;
 
     public void sendEmail(Long alertId, TargetEntity target, String subject, String body) {
         String[] to = resolveReceiver(target);
         try {
+
             emailNotifier.send(to, subject, body);
+            metrics.incNotifySend("EMAIL", true);
             notifyLogMapper.insert(NotifyLogEntity.builder()
                     .alertId(alertId)
                     .channel(DbValues.NotifyChannel.EMAIL)
@@ -45,6 +49,7 @@ public class NotifyService {
             alertEventMapper.updateById(upd);
 
         } catch (Exception e) {
+            metrics.incNotifySend("EMAIL", false);
             notifyLogMapper.insert(NotifyLogEntity.builder()
                     .alertId(alertId)
                     .channel(DbValues.NotifyChannel.EMAIL)

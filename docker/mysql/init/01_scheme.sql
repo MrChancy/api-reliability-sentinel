@@ -112,3 +112,4 @@ ALTER TABLE probe_target
 
 CREATE INDEX idx_probe_due ON probe_target(env, enabled, next_probe_ts, lease_until);
 CREATE INDEX idx_alert_status_last_seen on alert_event(status,last_seen_ts);
+CREATE INDEX idx_probe_event_agg ON probe_event(target_id,stauts,ts);

@@ -46,3 +46,16 @@ mybatis-plus:
     type-aliases-package: com.fluffycat.sentinelapp.domain.entity
     configuration:
         map-underscore-to-camel-case: true
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: health,info,metrics,prometheus
+    endpoint:
+        health:
+            probes:
+                enabled: true
+    metrics:
+        tags:
+            application: api-reliability-sentinel

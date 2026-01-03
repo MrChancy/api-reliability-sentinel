@@ -1,15 +1,16 @@
 package com.fluffycat.sentinelapp.probe.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fluffycat.sentinelapp.common.exception.BusinessException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fluffycat.sentinelapp.common.api.ErrorCode;
-import com.fluffycat.sentinelapp.domain.entity.probe.ProbeEventEntity;
-import com.fluffycat.sentinelapp.domain.entity.target.TargetEntity;
+import com.fluffycat.sentinelapp.common.exception.BusinessException;
+import com.fluffycat.sentinelapp.common.metrics.SentinelMetrics;
 import com.fluffycat.sentinelapp.domain.dto.probe.request.ProbeRunOnceRequest;
 import com.fluffycat.sentinelapp.domain.dto.probe.response.ProbeRunOnceResponse;
+import com.fluffycat.sentinelapp.domain.entity.probe.ProbeEventEntity;
+import com.fluffycat.sentinelapp.domain.entity.target.TargetEntity;
 import com.fluffycat.sentinelapp.probe.repo.ProbeEventMapper;
 import com.fluffycat.sentinelapp.target.repo.TargetMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import okhttp3.*;
 import org.slf4j.MDC;
@@ -28,6 +29,7 @@ public class ProbeRunnerService {
     private final ProbeEventMapper probeEventMapper;
     private final OkHttpClient okHttpClient;
     private final ObjectMapper objectMapper;
+    private final SentinelMetrics metrics;
 
     public ProbeRunOnceResponse runOnce(ProbeRunOnceRequest req) {
         TargetEntity target = targetMapper.selectById(req.getTargetId());
@@ -135,6 +137,8 @@ public class ProbeRunnerService {
         if (!success && (errorMsg == null || errorMsg.isBlank())) {
             errorMsg = "request failed";
         }
+
+        metrics.recordProbe(target.getEnv(),success,errorType,httpCode,rtMs);
 
         return new ProbeResult(success, httpCode, rtMs,
                 errorType == null ? "UNKNOWN" : errorType,

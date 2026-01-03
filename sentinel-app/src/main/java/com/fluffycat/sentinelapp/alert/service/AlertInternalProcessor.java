@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fluffycat.sentinelapp.alert.repo.AlertEventMapper;
 import com.fluffycat.sentinelapp.common.constants.DbValues;
+import com.fluffycat.sentinelapp.common.metrics.SentinelMetrics;
 import com.fluffycat.sentinelapp.domain.entity.alert.AlertEventEntity;
 import com.fluffycat.sentinelapp.domain.entity.probe.ProbeEventEntity;
 import com.fluffycat.sentinelapp.domain.entity.target.TargetEntity;
@@ -36,6 +37,7 @@ public class AlertInternalProcessor {
     private final ObjectMapper objectMapper;
     private final Optional<NotificationPort> notificationPort;
     private final NotifyPolicy notifyPolicy;
+    private final SentinelMetrics metrics;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int processSingle(TargetEntity t) {
@@ -71,6 +73,8 @@ public class AlertInternalProcessor {
         // 超过失败告警阈值则更新状态并发送邮件，否则设置状态为已解决
         if (errorRatePct >= thresholdPct) {
             AlertInternalProcessor.AlertUpsertResult r = upsertOpenOrReexisting(now, windowStart, t, totalCnt, failCnt, errorRatePct, thresholdPct, dedupeKey);
+
+            metrics.incAlertUpsert("ERROR_RATE",r.action().name());
 
             AlertEventEntity lastAlert = alertEventMapper.selectById(r.alertId());
 
@@ -110,6 +114,7 @@ public class AlertInternalProcessor {
             return 1;
         } else {
             resolveIfOpen(now, windowStart, t, totalCnt, failCnt, errorRatePct, thresholdPct, dedupeKey);
+            metrics.incAlertResolved("ERROR_RATE");
             return 1;
         }
     }
