@@ -1,5 +1,6 @@
 package com.fluffycat.sentinelapp.config;
 
+import com.fluffycat.sentinelapp.common.interceptor.TraceIdInterceptor;
 import okhttp3.OkHttpClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +17,7 @@ public class HttpClientConfig {
                 .readTimeout(Duration.ofMillis(1500))
                 .writeTimeout(Duration.ofMillis(500))
                 .retryOnConnectionFailure(false)
+                .addInterceptor(new TraceIdInterceptor())
                 .build();
     }
 }

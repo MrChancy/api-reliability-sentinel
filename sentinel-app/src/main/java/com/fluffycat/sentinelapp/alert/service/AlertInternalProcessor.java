@@ -1,10 +1,15 @@
 package com.fluffycat.sentinelapp.alert.service;
 
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fluffycat.sentinelapp.alert.config.AlertProperties;
 import com.fluffycat.sentinelapp.alert.repo.AlertEventMapper;
+import com.fluffycat.sentinelapp.common.constants.ConstantText;
 import com.fluffycat.sentinelapp.common.constants.DbValues;
 import com.fluffycat.sentinelapp.common.metrics.SentinelMetrics;
+import com.fluffycat.sentinelapp.common.trace.MdcScope;
+import com.fluffycat.sentinelapp.common.trace.TraceIdUtil;
 import com.fluffycat.sentinelapp.domain.entity.alert.AlertEventEntity;
 import com.fluffycat.sentinelapp.domain.entity.probe.ProbeEventEntity;
 import com.fluffycat.sentinelapp.domain.entity.target.TargetEntity;
@@ -38,6 +43,7 @@ public class AlertInternalProcessor {
     private final Optional<NotificationPort> notificationPort;
     private final NotifyPolicy notifyPolicy;
     private final SentinelMetrics metrics;
+    private final AlertProperties alertProperties;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int processSingle(TargetEntity t) {
@@ -64,6 +70,22 @@ public class AlertInternalProcessor {
                         .eq(ProbeEventEntity::getStatus, DbValues.ProbeStatus.FAIL)
         );
 
+        //获取失败样本：
+        List<ProbeEventEntity> failSamples = probeEventMapper.selectList(
+                Wrappers.<ProbeEventEntity>lambdaQuery()
+                        .select(
+                                ProbeEventEntity::getId,
+                                ProbeEventEntity::getTraceId
+                        )
+                        .eq(ProbeEventEntity::getTargetId, t.getId())
+                        .ge(ProbeEventEntity::getTs, windowStart)
+                        .eq(ProbeEventEntity::getStatus, DbValues.ProbeStatus.FAIL)
+                        .orderByDesc(ProbeEventEntity::getTs)
+                        .last("LIMIT " + alertProperties.sampleCount()));
+
+        List<Long> sampleEventIds = failSamples.stream().map(ProbeEventEntity::getId).filter(Objects::nonNull).toList();
+        List<String> sampleTraceIds = failSamples.stream().map(ProbeEventEntity::getTraceId).filter(StringUtils::isNotBlank).toList();
+
         // 失败率：百分比（DECIMAL(5,2)）对比
         // threshold 是 50.00 表示 50%
         double errorRatePct = (failCnt * 100.0) / totalCnt;
@@ -72,13 +94,13 @@ public class AlertInternalProcessor {
 
         // 超过失败告警阈值则更新状态并发送邮件，否则设置状态为已解决
         if (errorRatePct >= thresholdPct) {
-            AlertInternalProcessor.AlertUpsertResult r = upsertOpenOrReexisting(now, windowStart, t, totalCnt, failCnt, errorRatePct, thresholdPct, dedupeKey);
+            AlertInternalProcessor.AlertUpsertResult r = upsertOpenOrReexisting(now, windowStart, t, totalCnt, failCnt, errorRatePct, thresholdPct, dedupeKey, sampleEventIds, sampleTraceIds);
 
-            metrics.incAlertUpsert("ERROR_RATE",r.action().name());
+            metrics.incAlertUpsert("ERROR_RATE", r.action().name());
 
             AlertEventEntity lastAlert = alertEventMapper.selectById(r.alertId());
 
-            if (lastAlert==null)
+            if (lastAlert == null)
                 return 0;
 
 
@@ -97,19 +119,26 @@ public class AlertInternalProcessor {
                 return 0;
             }
 
-            notificationPort.ifPresentOrElse(
-                    port -> port.enqueue(new NotificationPort.AlertNotificationCommand(
-                            r.alertId(),
-                            t.getId(),
-                            lastAlert.getDedupeKey(),
-                            decision.reason(),
-                            r.summary(),
-                            r.detailsJson(),
-                            t.getEnv(),
-                            now
-                    )),
-                    ()-> log.info("NotificationPort absent, enqueue skipped: alertId={}", r.alertId())
-            );
+            try(MdcScope ignore = MdcScope.of(Map.of(
+                    ConstantText.DEDUPE_KEY,dedupeKey,
+                    TraceIdUtil.ALERT_ID,String.valueOf(r.alertId())
+            ))){
+                notificationPort.ifPresentOrElse(
+                        port -> port.enqueue(new NotificationPort.AlertNotificationCommand(
+                                r.alertId(),
+                                t.getId(),
+                                lastAlert.getDedupeKey(),
+                                decision.reason(),
+                                r.summary(),
+                                r.detailsJson(),
+                                t.getEnv(),
+                                now
+                        )),
+                        () -> log.info("NotificationPort absent, enqueue skipped: alertId={}", r.alertId())
+                );
+            }
+
+
 
             return 1;
         } else {
@@ -120,27 +149,30 @@ public class AlertInternalProcessor {
     }
 
     private AlertInternalProcessor.AlertUpsertResult upsertOpenOrReexisting(LocalDateTime now,
-                                                                  LocalDateTime windowStart,
-                                                                  TargetEntity t,
-                                                                  long totalCnt,
-                                                                  long failCnt,
-                                                                  double errorRatePct,
-                                                                  double thresholdPct,
-                                                                  String dedupeKey) {
+                                                                            LocalDateTime windowStart,
+                                                                            TargetEntity t,
+                                                                            long totalCnt,
+                                                                            long failCnt,
+                                                                            double errorRatePct,
+                                                                            double thresholdPct,
+                                                                            String dedupeKey,
+                                                                            List<Long> eventIds,
+                                                                            List<String> traceIds
+    ) {
 
         String alertType = DbValues.AlertType.ERROR_RATE;
         String summary = String.format(
                 "Name:%s, ERROR_RATE breach: %.2f%% >= %.2f%%, window=%ds, total=%d, fail=%d, target=%s %s",
-                t.getName(),errorRatePct, thresholdPct, t.getWindowSec(), totalCnt, failCnt, t.getBaseUrl(), t.getPath()
+                t.getName(), errorRatePct, thresholdPct, t.getWindowSec(), totalCnt, failCnt, t.getBaseUrl(), t.getPath()
         );
-        String detailsJson = buildDetailsJson(now, windowStart, t, totalCnt, failCnt, errorRatePct, thresholdPct);
+        String detailsJson = buildDetailsJson(now, windowStart, t, totalCnt, failCnt, errorRatePct, thresholdPct,eventIds,traceIds);
 
         AlertEventEntity existing = alertEventMapper.selectOne(
                 Wrappers.<AlertEventEntity>lambdaQuery()
                         .eq(AlertEventEntity::getDedupeKey, dedupeKey)
                         .last("LIMIT 1")
         );
-        List<String> unsolved = List.of(DbValues.AlertStatus.OPEN,DbValues.AlertStatus.ACK);
+        List<String> unsolved = List.of(DbValues.AlertStatus.OPEN, DbValues.AlertStatus.ACK);
         if (existing != null && unsolved.contains(existing.getStatus())) {
             AlertEventEntity upd = new AlertEventEntity();
             upd.setId(existing.getId());
@@ -150,11 +182,10 @@ public class AlertInternalProcessor {
             upd.setDetailsJson(detailsJson);
             alertEventMapper.updateById(upd);
 
-            return new AlertInternalProcessor.AlertUpsertResult(AlertUpsertAction.OPEN_UPDATED, existing.getId(),summary,detailsJson);
+            return new AlertInternalProcessor.AlertUpsertResult(AlertUpsertAction.OPEN_UPDATED, existing.getId(), summary, detailsJson);
         }
 
-        if (existing != null && DbValues.AlertStatus.RESOLVED.equals(existing.getStatus()))
-        {
+        if (existing != null && DbValues.AlertStatus.RESOLVED.equals(existing.getStatus())) {
             AlertEventEntity upd = new AlertEventEntity();
             upd.setId(existing.getId());
             upd.setStatus(DbValues.AlertStatus.OPEN);
@@ -166,7 +197,7 @@ public class AlertInternalProcessor {
             upd.setDetailsJson(detailsJson);
             alertEventMapper.updateById(upd);
 
-            return new AlertInternalProcessor.AlertUpsertResult(REOPENED, existing.getId(),summary,detailsJson);
+            return new AlertInternalProcessor.AlertUpsertResult(REOPENED, existing.getId(), summary, detailsJson);
         }
 
         // 3) 都不存在 -> 插入 OPEN
@@ -185,7 +216,7 @@ public class AlertInternalProcessor {
 
         try {
             alertEventMapper.insert(ev);
-            return new AlertUpsertResult(OPEN_CREATED, ev.getId(),summary,detailsJson);
+            return new AlertUpsertResult(OPEN_CREATED, ev.getId(), summary, detailsJson);
         } catch (DuplicateKeyException ex) {
             // 并发兜底
             AlertEventEntity justOpen = alertEventMapper.selectOne(
@@ -202,7 +233,7 @@ public class AlertInternalProcessor {
                 upd.setSummary(abbrev(summary, 512));
                 upd.setDetailsJson(detailsJson);
                 alertEventMapper.updateById(upd);
-                return new AlertInternalProcessor.AlertUpsertResult(AlertUpsertAction.OPEN_UPDATED, justOpen.getId(),summary,detailsJson);
+                return new AlertInternalProcessor.AlertUpsertResult(AlertUpsertAction.OPEN_UPDATED, justOpen.getId(), summary, detailsJson);
             }
             throw ex;
         }
@@ -230,7 +261,7 @@ public class AlertInternalProcessor {
                 "RECOVERED: %.2f%% < %.2f%%, window=%ds, total=%d, fail=%d, target=%s %s",
                 errorRatePct, thresholdPct, t.getWindowSec(), totalCnt, failCnt, t.getBaseUrl(), t.getPath()
         );
-        String detailsJson = buildDetailsJson(now, windowStart, t, totalCnt, failCnt, errorRatePct, thresholdPct);
+        String detailsJson = buildDetailsJson(now, windowStart, t, totalCnt, failCnt, errorRatePct, thresholdPct,null,null);
 
         AlertEventEntity upd = new AlertEventEntity();
         upd.setId(cur.getId());
@@ -250,7 +281,9 @@ public class AlertInternalProcessor {
                                     long totalCnt,
                                     long failCnt,
                                     double errorRatePct,
-                                    double thresholdPct) {
+                                    double thresholdPct,
+                                    List<Long> eventIds,
+                                    List<String> traceIds) {
         try {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("targetId", t.getId());
@@ -267,6 +300,8 @@ public class AlertInternalProcessor {
             m.put("thresholdPct", round2(thresholdPct));
             m.put("silencedUntil", t.getSilencedUntil() == null ? null : t.getSilencedUntil().toString());
             m.put("silenceReason", t.getSilenceReason());
+            m.put("sampleEventIds", eventIds!=null?objectMapper.writeValueAsString(eventIds):null);
+            m.put("sampleTraceIds", traceIds!=null?objectMapper.writeValueAsString(traceIds):null);
             return objectMapper.writeValueAsString(m);
         } catch (Exception e) {
             return null;
@@ -292,5 +327,6 @@ public class AlertInternalProcessor {
         return s.length() <= max ? s : s.substring(0, max);
     }
 
-    public record AlertUpsertResult(AlertUpsertAction action, long alertId,String summary,String detailsJson) {}
+    public record AlertUpsertResult(AlertUpsertAction action, long alertId, String summary, String detailsJson) {
+    }
 }

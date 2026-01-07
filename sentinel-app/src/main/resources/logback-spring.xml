@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- 引入 Spring 默认的颜色和脱敏配置 -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- 1. 可读的控制台输出 (用于本地开发) -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <!-- 这里的 pattern 决定了你在控制台看到的方括号格式 -->
+            <pattern>%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %clr([%X{scanId:-}][%X{traceId:-}][%X{targetId:-}]){yellow} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 2. 机器可读的 JSON 输出 (用于 Loki/ELK) -->
+    <appender name="JSON_STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp><timeZone>Asia/Singapore</timeZone></timestamp>
+                <logLevel/><threadName/><loggerName/><message/><stackTrace/>
+                <mdc>
+                    <includeMdcKeyName>scanId</includeMdcKeyName>
+                    <includeMdcKeyName>traceId</includeMdcKeyName>
+                    <includeMdcKeyName>targetId</includeMdcKeyName>
+                    <includeMdcKeyName>errorType</includeMdcKeyName>
+                    <includeMdcKeyName>rtMs</includeMdcKeyName>
+                </mdc>
+                <globalCustomFields>{"app":"sentinel-app"}</globalCustomFields>
+            </providers>
+        </encoder>
+    </appender>
+
+    <!-- 3. 环境分流：开发看文字，生产出 JSON -->
+    <springProfile name="local">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="docker">
+        <root level="INFO">
+            <appender-ref ref="JSON_STDOUT"/>
+        </root>
+    </springProfile>
+
+    <!-- 如果不分环境，想同时看，就都写在下面 -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

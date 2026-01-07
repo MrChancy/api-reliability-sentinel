@@ -21,6 +21,7 @@ sentinel:
         defaultIntervalSec: ${SENTINEL_PROBE_INTERVAL_SEC:60}
     alert:
         jobIntervalSec: ${SENTINEL_ALERT_JOB_INTERVAL_SEC:30}
+        sampleCount: 3
     target:
         defaultEnv: ${SENTINEL_DEFAULT_ENV:}
     pagination:

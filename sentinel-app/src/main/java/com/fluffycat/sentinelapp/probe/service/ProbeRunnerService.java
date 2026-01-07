@@ -3,8 +3,11 @@ package com.fluffycat.sentinelapp.probe.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fluffycat.sentinelapp.common.api.ErrorCode;
+import com.fluffycat.sentinelapp.common.constants.ConstantText;
 import com.fluffycat.sentinelapp.common.exception.BusinessException;
 import com.fluffycat.sentinelapp.common.metrics.SentinelMetrics;
+import com.fluffycat.sentinelapp.common.trace.MdcScope;
+import com.fluffycat.sentinelapp.common.trace.TraceIdUtil;
 import com.fluffycat.sentinelapp.domain.dto.probe.request.ProbeRunOnceRequest;
 import com.fluffycat.sentinelapp.domain.dto.probe.response.ProbeRunOnceResponse;
 import com.fluffycat.sentinelapp.domain.entity.probe.ProbeEventEntity;
@@ -64,7 +67,13 @@ public class ProbeRunnerService {
                     .sample(r.sampleJson)
                     .build();
 
-            probeEventMapper.insert(ev);
+            try(MdcScope ignore = MdcScope.of(Map.of(
+                    ConstantText.ERROR_TYPE,r.errorType(),
+                    ConstantText.RT_MS,String.valueOf(r.rtMs())
+            ))){
+                probeEventMapper.insert(ev);
+            }
+
 
             last = ProbeRunOnceResponse.ProbeRunOnceLast.builder()
                     .success(r.success)
@@ -244,7 +253,7 @@ public class ProbeRunnerService {
     private String currentTraceId() {
         // 你如果有链路追踪，在 filter/interceptor 里把 traceId 放 MDC
         // 这里默认取 MDC 的 "traceId"
-        return MDC.get("traceId");
+        return MDC.get(TraceIdUtil.TRACE_ID);
     }
 
     private String stripTrailingSlash(String s) {

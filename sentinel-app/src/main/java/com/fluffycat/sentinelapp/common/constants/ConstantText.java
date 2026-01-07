@@ -11,4 +11,9 @@ public final class ConstantText {
     public static final String THROTTLE = "THROTTLE";
     public static final String THROTTLE_PASS = "THROTTLE_PASS";
     public static final String UNKNOWN_ACTION = "UNKNOWN_ACTION";
+    public static final String TRACE_HEADER = "X-Trace-Id";
+    public static final String ERROR_TYPE = "errorType";
+    public static final String RT_MS = "rtMS";
+    public static final String DEDUPE_KEY = "dedupeKey";
+
 }

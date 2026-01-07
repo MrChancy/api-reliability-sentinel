@@ -11,6 +11,8 @@ import com.fluffycat.sentinelapp.common.exception.BusinessException;
 import com.fluffycat.sentinelapp.common.pagination.PageRequest;
 import com.fluffycat.sentinelapp.common.pagination.PageRequests;
 import com.fluffycat.sentinelapp.common.pagination.PageResponse;
+import com.fluffycat.sentinelapp.common.trace.MdcScope;
+import com.fluffycat.sentinelapp.common.trace.TraceIdUtil;
 import com.fluffycat.sentinelapp.domain.dto.alert.response.AlertResponse;
 import com.fluffycat.sentinelapp.domain.entity.alert.AlertEventEntity;
 import com.fluffycat.sentinelapp.domain.entity.target.TargetEntity;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -45,7 +48,12 @@ public class AlertService {
         int affected = 0;
 
         for (TargetEntity t : targets) {
-            affected += alertInternalProcessor.processSingle(t);
+            try (MdcScope ignored = MdcScope.of(Map.of(
+                    TraceIdUtil.TRACE_ID,TraceIdUtil.newUniqueId(),
+                    TraceIdUtil.TARGET_ID,String.valueOf(t.getId())
+            ))) {
+                affected += alertInternalProcessor.processSingle(t);
+            }
         }
 
         return affected;

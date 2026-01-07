@@ -17,7 +17,7 @@ public class AlertJob {
     private Boolean enableJob;
 
     @Scheduled(fixedDelay = 5000)
-    private void run() {
+    public void run() {
         if (!enableJob) return;
 
         int n = alertService.scanErrorRateAndUpsert();
