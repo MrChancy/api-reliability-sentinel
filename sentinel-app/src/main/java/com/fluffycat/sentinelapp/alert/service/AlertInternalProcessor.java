@@ -9,7 +9,6 @@ import com.fluffycat.sentinelapp.common.constants.ConstantText;
 import com.fluffycat.sentinelapp.common.constants.DbValues;
 import com.fluffycat.sentinelapp.common.metrics.SentinelMetrics;
 import com.fluffycat.sentinelapp.common.trace.MdcScope;
-import com.fluffycat.sentinelapp.common.trace.TraceIdUtil;
 import com.fluffycat.sentinelapp.domain.entity.alert.AlertEventEntity;
 import com.fluffycat.sentinelapp.domain.entity.probe.ProbeEventEntity;
 import com.fluffycat.sentinelapp.domain.entity.target.TargetEntity;
@@ -121,7 +120,7 @@ public class AlertInternalProcessor {
 
             try(MdcScope ignore = MdcScope.of(Map.of(
                     ConstantText.DEDUPE_KEY,dedupeKey,
-                    TraceIdUtil.ALERT_ID,String.valueOf(r.alertId())
+                    ConstantText.ALERT_ID,String.valueOf(r.alertId())
             ))){
                 notificationPort.ifPresentOrElse(
                         port -> port.enqueue(new NotificationPort.AlertNotificationCommand(

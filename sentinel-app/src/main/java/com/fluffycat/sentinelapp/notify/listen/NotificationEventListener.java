@@ -11,6 +11,7 @@ import com.fluffycat.sentinelapp.target.repo.TargetMapper;
 import com.fluffycat.sentinelcommon.service.NotificationPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -31,6 +32,7 @@ public class NotificationEventListener {
     private final RedisSendLock redisSendLock;
     private final SentinelMetrics metrics;
 
+    @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void on(NotificationPort.AlertNotificationCommand cmd) {
 

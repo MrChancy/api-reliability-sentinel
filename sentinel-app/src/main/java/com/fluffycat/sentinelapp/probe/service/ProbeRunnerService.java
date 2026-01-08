@@ -7,16 +7,15 @@ import com.fluffycat.sentinelapp.common.constants.ConstantText;
 import com.fluffycat.sentinelapp.common.exception.BusinessException;
 import com.fluffycat.sentinelapp.common.metrics.SentinelMetrics;
 import com.fluffycat.sentinelapp.common.trace.MdcScope;
-import com.fluffycat.sentinelapp.common.trace.TraceIdUtil;
 import com.fluffycat.sentinelapp.domain.dto.probe.request.ProbeRunOnceRequest;
 import com.fluffycat.sentinelapp.domain.dto.probe.response.ProbeRunOnceResponse;
 import com.fluffycat.sentinelapp.domain.entity.probe.ProbeEventEntity;
 import com.fluffycat.sentinelapp.domain.entity.target.TargetEntity;
 import com.fluffycat.sentinelapp.probe.repo.ProbeEventMapper;
 import com.fluffycat.sentinelapp.target.repo.TargetMapper;
+import io.opentelemetry.api.trace.Span;
 import lombok.RequiredArgsConstructor;
 import okhttp3.*;
-import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -251,9 +250,7 @@ public class ProbeRunnerService {
     }
 
     private String currentTraceId() {
-        // 你如果有链路追踪，在 filter/interceptor 里把 traceId 放 MDC
-        // 这里默认取 MDC 的 "traceId"
-        return MDC.get(TraceIdUtil.TRACE_ID);
+        return Span.current().getSpanContext().getTraceId();
     }
 
     private String stripTrailingSlash(String s) {

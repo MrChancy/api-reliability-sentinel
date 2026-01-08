@@ -15,5 +15,7 @@ public final class ConstantText {
     public static final String ERROR_TYPE = "errorType";
     public static final String RT_MS = "rtMS";
     public static final String DEDUPE_KEY = "dedupeKey";
+    public static final String TARGET_ID = "targetId";
+    public static final String ALERT_ID = "alertId";
 
 }

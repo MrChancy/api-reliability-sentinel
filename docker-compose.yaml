@@ -69,6 +69,13 @@ services:
       SMTP_PASS: ${SMTP_PASS}
       MAIL_FROM: ${MAIL_FROM}
       MAIL_TO: ${MAIL_TO}
+      # OTel
+      OTEL_SERVICE_NAME: sentinel-app
+      # 指向 Alloy 的 OTLP 接收端口
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_TRACES_EXPORTER: otlp
+      JAVA_TOOL_OPTIONS: "-javaagent:/app/opentelemetry-javaagent.jar"
     ports:
       - "8080:8080"
     depends_on:
@@ -104,12 +111,20 @@ services:
   prometheus:
     image: prom/prometheus:latest
     container_name: api-sentinel-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--enable-feature=exemplar-storage'
+      # 增加保留时间，防止撑爆硬盘
+      - '--storage.tsdb.retention.time=15d'
     volumes:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
     ports:
       - "9090:9090"
     networks:
       - sentinel_net
+
 
   grafana:
     image: grafana/grafana:latest
@@ -125,9 +140,48 @@ services:
     networks:
       - sentinel_net
 
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: api-sentinel-loki
+    command: [ "-config.file=/etc/loki/loki.yml" ]
+    volumes:
+      - ./observability/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    networks: [ sentinel_net ]
+
+  tempo:
+    image: grafana/tempo:2.4.2
+    container_name: api-sentinel-tempo
+    command: [ "-config.file=/etc/tempo/tempo.yml" ]
+    volumes:
+      - ./observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+    ports:
+      - "3200:3200"   # tempo query
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    networks: [ sentinel_net ]
+
+  alloy:
+    image: grafana/alloy:latest
+    container_name: api-sentinel-alloy
+    command: [ "run", "/etc/alloy/config.alloy" ]
+    volumes:
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "12345:12345" # Alloy UI
+      - "4319:4317"   # 对外暴露给应用的 OTLP gRPC（避免和 tempo 冲突）
+      - "4320:4318"   # OTLP HTTP
+    networks: [ sentinel_net ]
+
 networks:
   sentinel_net:
     driver: bridge
 
+# 统一在底部声明，由 Docker 管理它们的存储空间
 volumes:
   mysql_data:
+  prometheus_data:
+  loki_data:

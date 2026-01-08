@@ -1,8 +1,6 @@
 package com.fluffycat.sentinelapp.probe.job;
 
 import com.fluffycat.sentinelapp.common.identity.InstanceIdHolder;
-import com.fluffycat.sentinelapp.common.trace.MdcScope;
-import com.fluffycat.sentinelapp.common.trace.TraceIdUtil;
 import com.fluffycat.sentinelapp.domain.dto.probe.request.ProbeRunOnceRequest;
 import com.fluffycat.sentinelapp.domain.entity.target.TargetEntity;
 import com.fluffycat.sentinelapp.probe.config.ProbeProperties;
@@ -17,7 +15,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
@@ -58,12 +55,7 @@ public class ProbeJob {
                     probeExecutor.getThreadPoolExecutor().getQueue().size());
 
             for (TargetEntity t : targets) {
-                try (MdcScope ignored = MdcScope.of(Map.of(
-                        TraceIdUtil.TRACE_ID,TraceIdUtil.newUniqueId(),
-                        TraceIdUtil.TARGET_ID,String.valueOf(t.getId())))) {
-                    probeExecutor.execute(() -> runOne(t, owner));
-                }
-
+                probeExecutor.execute(() -> runOne(t, owner));
             }
         } finally {
             ticking.set(false);

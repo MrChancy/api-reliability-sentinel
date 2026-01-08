@@ -1,8 +1,47 @@
 apiVersion: 1
 
 datasources:
+  # 1. 配置 Tempo
+  - name: Tempo
+    type: tempo
+    uid: tempo_uid  # 给它一个固定 UID
+    url: http://tempo:3200
+    access: proxy
+    editable: true
+    jsonData:
+      # 核心配置：从 Trace 反向查找日志
+      tracesToLogsV2:
+        datasourceUid: loki_uid    # 对应 Loki 数据源的 UID
+        spanStartTimeShift: '1m'   # 搜索时间范围向前偏移（防止时钟略微不同步）
+        spanEndTimeShift: '1m'     # 搜索时间范围向后偏移
+        tags: [ 'trace_id' ]         # 告诉 Tempo：用 trace_id 这个标签去 Loki 里搜
+        filterByTraceID: true      # 自动加上 trace_id=${__trace.traceId} 过滤条件
+        filterBySpanID: false
+        customQuery: true
+        # 关键：按你的日志格式过滤 trace_id（如果你最终用 traceId，就改字段名）
+        query: '{app="sentinel-app"} | json | trace_id="$${__trace.traceId}"'
+
   - name: Prometheus
     type: prometheus
     access: proxy
-    url: http://api-sentinel-prometheus:9090
+    url: http://prometheus:9090
     isDefault: true
+    editable: true
+    jsonData:
+      # 核心配置：开启 Exemplars 联动
+      exemplarTraceIdDestinations:
+        - datasourceUid: tempo_uid # 对应上面 Tempo 的 UID
+          name: trace_id
+
+  - name: Loki
+    type: loki
+    uid: loki_uid
+    url: http://loki:3100
+    jsonData:
+      derivedFields:
+        - name: trace_id
+          matcherRegex: '"trace_id":"([0-9a-f]{32})"'
+          datasourceUid: tempo_uid
+          url: '$${__value.raw}'
+          urlDisplayLabel: 'View trace'
+

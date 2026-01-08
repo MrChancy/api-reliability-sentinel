@@ -19,8 +19,8 @@
                 <timestamp><timeZone>Asia/Singapore</timeZone></timestamp>
                 <logLevel/><threadName/><loggerName/><message/><stackTrace/>
                 <mdc>
-                    <includeMdcKeyName>scanId</includeMdcKeyName>
-                    <includeMdcKeyName>traceId</includeMdcKeyName>
+                    <includeMdcKeyName>trace_id</includeMdcKeyName>
+                    <includeMdcKeyName>span_id</includeMdcKeyName>
                     <includeMdcKeyName>targetId</includeMdcKeyName>
                     <includeMdcKeyName>errorType</includeMdcKeyName>
                     <includeMdcKeyName>rtMs</includeMdcKeyName>
@@ -42,9 +42,4 @@
             <appender-ref ref="JSON_STDOUT"/>
         </root>
     </springProfile>
-
-    <!-- 如果不分环境，想同时看，就都写在下面 -->
-    <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
-    </root>
 </configuration>

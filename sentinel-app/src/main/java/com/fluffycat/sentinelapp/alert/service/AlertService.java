@@ -6,13 +6,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fluffycat.sentinelapp.alert.AlertEventConverter;
 import com.fluffycat.sentinelapp.alert.repo.AlertEventMapper;
 import com.fluffycat.sentinelapp.common.api.ErrorCode;
+import com.fluffycat.sentinelapp.common.constants.ConstantText;
 import com.fluffycat.sentinelapp.common.constants.DbValues;
 import com.fluffycat.sentinelapp.common.exception.BusinessException;
 import com.fluffycat.sentinelapp.common.pagination.PageRequest;
 import com.fluffycat.sentinelapp.common.pagination.PageRequests;
 import com.fluffycat.sentinelapp.common.pagination.PageResponse;
 import com.fluffycat.sentinelapp.common.trace.MdcScope;
-import com.fluffycat.sentinelapp.common.trace.TraceIdUtil;
 import com.fluffycat.sentinelapp.domain.dto.alert.response.AlertResponse;
 import com.fluffycat.sentinelapp.domain.entity.alert.AlertEventEntity;
 import com.fluffycat.sentinelapp.domain.entity.target.TargetEntity;
@@ -49,8 +49,7 @@ public class AlertService {
 
         for (TargetEntity t : targets) {
             try (MdcScope ignored = MdcScope.of(Map.of(
-                    TraceIdUtil.TRACE_ID,TraceIdUtil.newUniqueId(),
-                    TraceIdUtil.TARGET_ID,String.valueOf(t.getId())
+                    ConstantText.TARGET_ID,String.valueOf(t.getId())
             ))) {
                 affected += alertInternalProcessor.processSingle(t);
             }
